@@ -1,6 +1,5 @@
 import tkinter as tk
 from compute_distance import Beacons
-import csv
 
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
