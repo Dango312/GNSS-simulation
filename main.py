@@ -1,5 +1,6 @@
 import tkinter as tk
 from compute_distance import Beacons
+import csv
 
 class App(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -40,10 +41,26 @@ class App(tk.Tk):
         self.configure(menu=menu)
 
     def save_file(self):
-        print('saved')
+        filepath = tk.filedialog.asksaveasfilename()
+        data = self.beacon_frame.get_data()
+        print(data)
+        if filepath != "":
+            with open(filepath, "w", newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([x[0] for x in data[0]])
+                writer.writerow([x[1] for x in data[0]])
+                writer.writerow(data[3])
+                writer.writerow(data[1])
+                writer.writerow([data[2]])
+        print('File saved')
 
     def open_file(self):
-        print('File opened.')
+        filepath = tk.filedialog.askopenfilename()
+        with open(filepath) as f:
+            reader = csv.reader(f)
+            for row in reader:
+                print(row)
+        print('File opened')
 
     def computate(self):
         """
