@@ -7,19 +7,30 @@ import random
 
 
 class Beacons():
-    def __init__(self, coordinates, distances=[], receiver_x=0, receiver_y=0, tau=0, ri=0):
+    def __init__(self, coordinates, distances=[], receiver_x=0, receiver_y=0, tau=0, ri=[]):
         self.coordinates = np.array(coordinates)
-        self.distances = np.array(distances)
         self.receiver_x = receiver_x
         self.receiver_y = receiver_y
         self.tau = tau
-        self.ri = ri
+        self.ri = np.array(ri)
+        self.distances = np.sqrt((self.coordinates[:, 0] - receiver_x) ** 2 + (self.coordinates[:,1] - receiver_y) ** 2) + tau + self.ri[:] if not distances \
+            else np.array(distances)
+        print(distances)
+        self.max_x, self.max_y = self.get_max_coordinates()
+
+    def get_max_coordinates(self):
+        max_x = 0
+        max_y = 0
+        for x, y in self.coordinates:
+            if abs(x) > max_x: max_x = abs(x)
+            if abs(y) > max_y: max_y = abs(y)
+        print(max_x, max_y)
+        return max_x, max_y
 
     def compute_distance(self, x, y, tau, ri):
         pi = []
         for i in range(len(self.coordinates)):
-            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau + ri)
-        self.distances = np.array(pi)
+            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau)
         return np.array(pi)
 
     def compute_error(self, pi):
@@ -44,9 +55,9 @@ class Beacons():
         return [dEdx, dEdy, dEdtau, dEdri]
 
     def train(self, epochs, lr=0.0005):
-        import random
-        x = random.random() * 200 - 100
-        y = random.random() * 200 - 100
+        x = random.random()*self.max_x*2-self.max_x
+        y = random.random()*self.max_y*2-self.max_y
+        print("X=", x, "Y=", y)
         tau = random.random() * 2
         ri = random.random() * 1
         for i in range(epochs):
@@ -59,19 +70,22 @@ class Beacons():
             ri -= lr * dri
             if i % 1000 == 1:
                 print('epoch: {}, error: {}'.format(i, E / len(pi)))
-        return x, y, tau, ri
+
+        self.receiver_x = x
+        self.receiver_y = y
+        return x, y, tau
 
     def draw(self):
         app = tk.Tk()
 
         fig, ax = plt.subplots()
         ax.scatter(self.coordinates[:, 0], self.coordinates[:, 1], c="red", label='beacons')
-        ax.scatter(np.array([20.838380306132343]), np.array([-199.9424496324605]), c="blue", label='receiver')
+        ax.scatter(np.array([self.receiver_x]), np.array([self.receiver_y]), c="blue", label='receiver')
 
         for i in range(len(self.coordinates)):  # отрисовка расстояния
-            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordiates[i, 1]), self.distances[i], color='g', ls='--', fill=False))
+            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordinates[i, 1]), self.distances[i], color='g', ls='--', fill=False))
 
-        for i, txt in enumerate(range(1, 6)):  # добавление номера маякам
+        for i, txt in enumerate(range(1, len(self.coordinates))):  # добавление номера маякам
             ax.annotate(txt, (self.coordinates[i, 0], self.coordinates[i, 1]))
         ax.legend()
 
