@@ -47,19 +47,25 @@ class App(tk.Tk):
         if filepath != "":
             with open(filepath, "w", newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow([x[0] for x in data[0]])
-                writer.writerow([x[1] for x in data[0]])
-                writer.writerow(data[3])
-                writer.writerow(data[1])
-                writer.writerow([data[2]])
+                writer.writerow([x[0] for x in data[0]]) # beacon x
+                writer.writerow([x[1] for x in data[0]]) # beacon y
+                writer.writerow(data[1]) # receiver coordinates
+                writer.writerow([data[2]]) # tau
+                writer.writerow(data[3]) # ri
         print('File saved')
 
     def open_file(self):
         filepath = tk.filedialog.askopenfilename()
+        data = []
         with open(filepath) as f:
             reader = csv.reader(f)
-            for row in reader:
-                print(row)
+            list_reader = list(reader)
+            data.append(list(zip(list_reader[0], list_reader[1]))) # beacon coordinates
+            data.append((list_reader[2])) # receiver coordinates
+            data.append(list_reader[3]) # tau
+            data.append(list_reader[4]) # ri
+        print(data)
+        self.beacon_frame.insert_data(data)
         print('File opened')
 
     def computate(self):
@@ -142,6 +148,30 @@ class BeaconFrame(tk.Frame):
                 receiver_y = self.children[c].children['receiver_y'].get()
                 tau = self.children[c].children['tau'].get()
         return beacons_coordinates, (float(receiver_x), float(receiver_y)), float(tau), ri_data
+
+    def insert_data(self, data):
+        """
+        Insert data in entries
+        :param data: data to insert
+        :return:
+        """
+        print(self.children.keys())
+        print(self.children['!frame'].children)
+        for i in range(len(data[0])):
+            frame = list(self.children.keys())[i]
+            self.children[frame].children['x_entry'].delete(0, last=tk.END)
+            self.children[frame].children['x_entry'].insert(0, data[0][i][0])
+            self.children[frame].children['y_entry'].delete(0, last=tk.END)
+            self.children[frame].children['y_entry'].insert(0, data[0][i][1])
+            self.children[frame].children['ri_entry'].delete(0, last=tk.END)
+            self.children[frame].children['ri_entry'].insert(0, data[3][i])
+        receiver = list(self.children.keys())[-1]
+        self.children[receiver].children['receiver_x'].delete(0, last=tk.END)
+        self.children[receiver].children['receiver_x'].insert(0, data[1][0])
+        self.children[receiver].children['receiver_y'].delete(0, last=tk.END)
+        self.children[receiver].children['receiver_y'].insert(0, data[1][1])
+        self.children[receiver].children['tau'].delete(0, last=tk.END)
+        self.children[receiver].children['tau'].insert(0, data[2][0])
 
 
 if __name__ == '__main__':
