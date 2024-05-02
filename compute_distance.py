@@ -13,10 +13,13 @@ class Beacons():
         self.receiver_y = receiver_y
         self.tau = tau
         self.ri = np.array(ri)
-        self.distances = np.sqrt((self.coordinates[:, 0] - receiver_x) ** 2 + (self.coordinates[:,1] - receiver_y) ** 2) + tau + self.ri[:] if not distances \
-            else np.array(distances)
-        print(distances)
+        self.distances = np.sqrt((self.coordinates[:, 0] - receiver_x) ** 2 + (self.coordinates[:,1] - receiver_y) ** 2) \
+                         + tau + self.ri[:] if not distances else np.array(distances)
         self.max_x, self.max_y = self.get_max_coordinates()
+        self.predicted_x = 0
+        self.predicted_y = 0
+        self.predicted_distances = []
+        self.logs = ''
 
     def get_max_coordinates(self):
         max_x = 0
@@ -24,13 +27,20 @@ class Beacons():
         for x, y in self.coordinates:
             if abs(x) > max_x: max_x = abs(x)
             if abs(y) > max_y: max_y = abs(y)
-        print(max_x, max_y)
         return max_x, max_y
 
-    def compute_distance(self, x, y, tau, ri):
+    def compute_distance(self, x, y, tau, ri) -> np.array:
+        """
+        Compute distances between each beacon and receiver
+        :param x: receiver x
+        :param y: receiver y
+        :param tau:
+        :param ri:
+        :return:
+        """
         pi = []
         for i in range(len(self.coordinates)):
-            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau)
+            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau + ri)
         return np.array(pi)
 
     def compute_error(self, pi):
@@ -55,9 +65,14 @@ class Beacons():
         return [dEdx, dEdy, dEdtau, dEdri]
 
     def train(self, epochs, lr=0.0005):
+        """
+        Predict receiver coordinates ant tau
+        :param epochs:
+        :param lr:
+        :return: x, y, tau
+        """
         x = random.random()*self.max_x*2-self.max_x
         y = random.random()*self.max_y*2-self.max_y
-        print("X=", x, "Y=", y)
         tau = random.random() * 2
         ri = random.random() * 1
         for i in range(epochs):
@@ -68,26 +83,38 @@ class Beacons():
             y -= lr * dy
             tau -= lr * dtau
             ri -= lr * dri
-            if i % 1000 == 1:
+            if i % (epochs/10) == 1:
                 print('epoch: {}, error: {}'.format(i, E / len(pi)))
+                self.logs += f'epoch: {i}, error: {E/len(pi)}\n'
 
-        self.receiver_x = x
-        self.receiver_y = y
+        self.predicted_distances = self.compute_distance(x, y, tau, ri)
+        print(self.predicted_distances)
+        self.predicted_x = x
+        self.predicted_y = y
+        self.logs += f'predicted coordinates = ({self.predicted_x}, {self.predicted_y})\ntau = {tau}\n'
         return x, y, tau
 
+    def get_train_logs(self):
+        return self.logs
+
     def draw(self):
+        """
+        Draw beacons and receiver
+        :return:
+        """
         app = tk.Tk()
 
         fig, ax = plt.subplots()
         ax.scatter(self.coordinates[:, 0], self.coordinates[:, 1], c="red", label='beacons')
-        ax.scatter(np.array([self.receiver_x]), np.array([self.receiver_y]), c="blue", label='receiver')
+        ax.scatter(np.array([self.receiver_x]), np.array([self.receiver_y]), c="blue", marker='^', label='receiver')
+        ax.scatter(np.array([self.predicted_x]), np.array([self.predicted_y]), c="yellow", marker='D', label='receiver_predicted')
 
         for i in range(len(self.coordinates)):  # отрисовка расстояния
-            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordinates[i, 1]), self.distances[i], color='g', ls='--', fill=False))
+            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordinates[i, 1]), self.predicted_distances[i], color='g', ls='--', fill=False))
 
         for i, txt in enumerate(range(1, len(self.coordinates))):  # добавление номера маякам
             ax.annotate(txt, (self.coordinates[i, 0], self.coordinates[i, 1]))
-        ax.legend()
+        ax.legend(loc=4)
 
         canvas = FigureCanvasTkAgg(fig, master=app)
         canvas.draw()
@@ -96,4 +123,3 @@ class Beacons():
         toolbar.update()
         canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        tk.mainloop()

@@ -6,42 +6,41 @@ class App(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
-        self.middle_container = tk.Frame(self)
-        self.right_container = tk.Frame(self)
-
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=2)
-        self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
-
-        self.middle_container.grid(row=0, column=1, sticky='nsew')
-        lm = tk.Label(self.middle_container, text='middle', background='red')
-        lm.pack(expand=True, fill='both')
-        self.right_container.grid(row=0, column=2, sticky='nsew')
-        lr = tk.Label(self.right_container, text='right', background='blue')
-        lr.pack(expand=True, fill='both')
 
         self.draw_menu()
 
-        self.beacon_frame = BeaconFrame(self)
+        self.beacon_frame = ParametersFrame(self)
+        self.logs_frame = LogFrame(self)
 
         self.title("GNSS")
         self.geometry('1280x720')
 
     def draw_menu(self):
+        """
+        Draw top menu
+        :return:
+        """
         menu = tk.Menu(self)
         file_menu = tk.Menu(menu, tearoff=False)
-        file_menu.add_command(label='Save', command=self.save_file)
-        file_menu.add_command(label='Open', command=self.open_file)
+        file_menu.add_command(label='Save parameters', command=self.save_params)
+        file_menu.add_command(label='Open parameters', command=self.open_params)
+        file_menu.add_command(label='Save logs', command=self.save_logs)
         menu.add_cascade(label='File', menu=file_menu)
 
         computation_menu = tk.Menu(menu, tearoff=False)
-        computation_menu.add_command(label='Compute', command=self.computate)
+        computation_menu.add_command(label='Compute', command=self.compute)
         menu.add_cascade(label='Computation', menu=computation_menu)
         self.configure(menu=menu)
 
-    def save_file(self):
-        filepath = tk.filedialog.asksaveasfilename()
+    def save_params(self):
+        """
+        Save parameters into .csv file
+        :return:
+        """
+        filepath = tk.filedialog.asksaveasfilename(initialfile='parameters.scv')
         data = self.beacon_frame.get_data()
         print(data)
         if filepath != "":
@@ -54,7 +53,11 @@ class App(tk.Tk):
                 writer.writerow(data[3]) # ri
         print('File saved')
 
-    def open_file(self):
+    def open_params(self):
+        """
+        Open parameters from .csv file
+        :return:
+        """
         filepath = tk.filedialog.askopenfilename()
         data = []
         with open(filepath) as f:
@@ -68,7 +71,7 @@ class App(tk.Tk):
         self.beacon_frame.insert_data(data)
         print('File opened')
 
-    def computate(self):
+    def compute(self):
         """
         Computate distances
         :return: None
@@ -77,11 +80,42 @@ class App(tk.Tk):
         print("Coordinate:", beacon_coords, receiver_coords, tau, ri)
         beacons = Beacons(coordinates=beacon_coords, receiver_x=receiver_coords[0], receiver_y=receiver_coords[1],
                           tau=tau, ri=ri)
-        print(beacons.train(10000))
+        epoch = self.beacon_frame.get_epoch()
+        print(beacons.train(epoch))
+        self.logs_frame.display_logs(beacons.get_train_logs())
         beacons.draw()
 
+    def save_logs(self):
+        """
+        Save logs in .txt file
+        :return:
+        """
+        filepath = tk.filedialog.asksaveasfilename(initialfile='logs.txt')
+        with open(filepath, 'w') as f:
+            f.write(self.logs_frame.log_window['text'])
+            f.close()
 
-class BeaconFrame(tk.Frame):
+
+class LogFrame(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.grid(row=0, column=1, sticky='nsew')
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.log_window = tk.Label(self, text='Log_window', justify=tk.LEFT, relief=tk.GROOVE, name='logs')
+        self.log_window.grid(row=0, column=0, sticky='nsew')
+
+    def display_logs(self, logs):
+        """
+        Display logs in widget
+        :param logs: logs to display
+        :return:
+        """
+        self.log_window.config(anchor='nw')
+        self.log_window.config(text=logs)
+
+
+class ParametersFrame(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.grid(row=0, column=0, sticky='nsew')
@@ -93,16 +127,25 @@ class BeaconFrame(tk.Frame):
 
         self.create_receiver_entry().grid(row=0, column=1)
 
+        self.epoch_entry = tk.Entry(self, name='epoch_entry')
+        self.epoch_entry.grid(row=1, column=1)
+
     def create_beacon_entry(self, beacon_text, error_text) -> tk.Frame:
+        """
+        Create frame with entries for beacon
+        :param beacon_text: str
+        :param error_text: str
+        :return: Frame
+        """
         frame = tk.Frame(self)
         self.columnconfigure((0, 1, 2), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
         beacon_label = tk.Label(frame, text=beacon_text)
         ri_label = tk.Label(frame, text=error_text)
-        x_entry = tk.Entry(frame, background='red', name='x_entry')
-        y_entry = tk.Entry(frame, background='blue', name='y_entry')
-        ri_entry = tk.Entry(frame, background='green', name='ri_entry')
+        x_entry = tk.Entry(frame, name='x_entry')
+        y_entry = tk.Entry(frame, name='y_entry')
+        ri_entry = tk.Entry(frame, name='ri_entry')
 
         beacon_label.grid(row=0, column=0, columnspan=2, sticky='nsew')
         ri_label.grid(row=0, column=2, sticky='nsew')
@@ -112,15 +155,19 @@ class BeaconFrame(tk.Frame):
         return frame
 
     def create_receiver_entry(self) -> tk.Frame:
+        """
+        Create frame with entries for receiver data
+        :return:
+        """
         frame = tk.Frame(self)
         self.columnconfigure((0, 1, 2), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
         receiver_label = tk.Label(frame, text='receiver coordinates')
         tau_label = tk.Label(frame, text='tau')
-        receiver_x = tk.Entry(frame, background='red', name='receiver_x')
-        receiver_y = tk.Entry(frame, background='blue', name='receiver_y')
-        tau_entry = tk.Entry(frame, background='green', name='tau')
+        receiver_x = tk.Entry(frame, name='receiver_x')
+        receiver_y = tk.Entry(frame, name='receiver_y')
+        tau_entry = tk.Entry(frame, name='tau')
 
         receiver_label.grid(row=0, column=0, columnspan=2, sticky='nsew')
         tau_label.grid(row=0, column=2, sticky='nsew')
@@ -165,7 +212,7 @@ class BeaconFrame(tk.Frame):
             self.children[frame].children['y_entry'].insert(0, data[0][i][1])
             self.children[frame].children['ri_entry'].delete(0, last=tk.END)
             self.children[frame].children['ri_entry'].insert(0, data[3][i])
-        receiver = list(self.children.keys())[-1]
+        receiver = list(self.children.keys())[-2]
         self.children[receiver].children['receiver_x'].delete(0, last=tk.END)
         self.children[receiver].children['receiver_x'].insert(0, data[1][0])
         self.children[receiver].children['receiver_y'].delete(0, last=tk.END)
@@ -173,6 +220,12 @@ class BeaconFrame(tk.Frame):
         self.children[receiver].children['tau'].delete(0, last=tk.END)
         self.children[receiver].children['tau'].insert(0, data[2][0])
 
+    def get_epoch(self) -> int:
+        """
+        Return the entered number of epochs
+        :return: int: epochs
+        """
+        return int(self.epoch_entry.get())
 
 if __name__ == '__main__':
     app = App()
