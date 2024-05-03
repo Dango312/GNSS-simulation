@@ -143,9 +143,6 @@ class ParametersFrame(tk.Frame):
 
         self.create_receiver_entry().grid(row=0, column=1)
 
-        self.valid_epochs = (self.register(self.validate_epochs),'%P')
-        self.invalid_epochs = (self.register(self.on_invalid_epochs),)
-
         self.create_epoch_entry().grid(row=1, column=1)
 
         self.add_button = tk.Button(self, text='Add beacon', command=self.add_beacon).grid(row=2, column=1)
