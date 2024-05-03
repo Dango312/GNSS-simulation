@@ -1,5 +1,6 @@
 import tkinter as tk
 from compute_distance import Beacons
+import time
 import csv
 
 class App(tk.Tk):
@@ -40,7 +41,9 @@ class App(tk.Tk):
         Save parameters into .csv file
         :return:
         """
-        filepath = tk.filedialog.asksaveasfilename(initialfile='parameters.scv')
+        filepath = tk.filedialog.asksaveasfilename(initialfile='parameters.csv',
+                                                   defaultextension=".csv",
+                                                   filetypes=(('File "SCV"', "*.csv"), ("All Files", "*.*")))
         data = self.beacon_frame.get_data()
         print(data)
         if filepath != "":
@@ -58,7 +61,8 @@ class App(tk.Tk):
         Open parameters from .csv file
         :return:
         """
-        filepath = tk.filedialog.askopenfilename()
+        filepath = tk.filedialog.askopenfilename(defaultextension=".csv",
+                                                 filetypes=(('File "SCV"', "*.csv"), ("All Files", "*.*")))
         data = []
         with open(filepath) as f:
             reader = csv.reader(f)
@@ -76,22 +80,34 @@ class App(tk.Tk):
         Computate distances
         :return: None
         """
-        beacon_coords, receiver_coords, tau, ri = self.beacon_frame.get_data()
-        print("Coordinate:", beacon_coords, receiver_coords, tau, ri)
-        beacons = Beacons(coordinates=beacon_coords, receiver_x=receiver_coords[0], receiver_y=receiver_coords[1],
-                          tau=tau, ri=ri)
-        epoch = self.beacon_frame.get_epoch()
-        print(beacons.train(epoch))
-        self.logs_frame.display_logs(beacons.get_train_logs())
-        beacons.draw()
+        try:
+            beacon_coords, receiver_coords, tau, ri = self.beacon_frame.get_data()
+            print("Coordinate:", beacon_coords, receiver_coords, tau, ri)
+            beacons = Beacons(coordinates=beacon_coords, receiver_x=receiver_coords[0], receiver_y=receiver_coords[1],
+                              tau=tau, ri=ri)
+        except ValueError:
+            self.beacon_frame.show_warnings('float')
+        try:
+            epoch = self.beacon_frame.get_epoch()
+            print(beacons.train(epoch))
+            self.logs_frame.display_logs(beacons.get_train_logs())
+            beacons.draw()
+        except ValueError:
+            self.beacon_frame.show_warnings('int')
 
     def save_logs(self):
         """
         Save logs in .txt file
         :return:
         """
-        filepath = tk.filedialog.asksaveasfilename(initialfile='logs.txt')
+        filepath = tk.filedialog.asksaveasfilename(initialfile='logs.txt',
+                                                   defaultextension=".txt",
+                                                   filetypes=(("Text file", "*.txt"), ("All Files", "*.*")))
         with open(filepath, 'w') as f:
+            current_time = time.time()
+            local_time = time.localtime(current_time)
+            formatted_time = time.strftime("%Y-%m-%d %H:%M:%S\n", local_time)
+            f.write(formatted_time)
             f.write(self.logs_frame.log_window['text'])
             f.close()
 
@@ -102,7 +118,7 @@ class LogFrame(tk.Frame):
         self.grid(row=0, column=1, sticky='nsew')
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
-        self.log_window = tk.Label(self, text='Log_window', justify=tk.LEFT, relief=tk.GROOVE, name='logs')
+        self.log_window = tk.Label(self, text='logs', justify=tk.LEFT, relief=tk.GROOVE, name='logs')
         self.log_window.grid(row=0, column=0, sticky='nsew')
 
     def display_logs(self, logs):
@@ -121,60 +137,81 @@ class ParametersFrame(tk.Frame):
         self.grid(row=0, column=0, sticky='nsew')
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
-        self.rowconfigure([i for i in range(6)], weight=1)
-        for i in range(1, 7):
-            self.create_beacon_entry(f'beacon {i}', f'r{i}').grid(row=i-1, column=0)
+        self.rowconfigure([i for i in range(3)], weight=1)
+        for i in range(1, 4):
+            self.create_beacon_entry(i, f'r{i}').grid(row=i-1, column=0)
 
         self.create_receiver_entry().grid(row=0, column=1)
 
-        self.epoch_entry = tk.Entry(self, name='epoch_entry')
-        self.epoch_entry.grid(row=1, column=1)
+        self.valid_epochs = (self.register(self.validate_epochs),'%P')
+        self.invalid_epochs = (self.register(self.on_invalid_epochs),)
 
-    def create_beacon_entry(self, beacon_text, error_text) -> tk.Frame:
+        self.create_epoch_entry().grid(row=1, column=1)
+
+        self.add_button = tk.Button(self, text='Add beacon', command=self.add_beacon).grid(row=2, column=1)
+
+    def add_beacon(self):
+        beacons = self.grid_size()[1]
+        self.rowconfigure(beacons, weight=1)
+        self.create_beacon_entry(beacons+1, f'r{beacons}').grid(row=beacons, column=0)
+
+    def create_beacon_entry(self, number, error_text) -> tk.Frame:
         """
         Create frame with entries for beacon
         :param beacon_text: str
         :param error_text: str
         :return: Frame
         """
-        frame = tk.Frame(self)
+        beacon_frame = tk.Frame(self, name=f'beacon_frame{number}')
         self.columnconfigure((0, 1, 2), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
-        beacon_label = tk.Label(frame, text=beacon_text)
-        ri_label = tk.Label(frame, text=error_text)
-        x_entry = tk.Entry(frame, name='x_entry')
-        y_entry = tk.Entry(frame, name='y_entry')
-        ri_entry = tk.Entry(frame, name='ri_entry')
+        beacon_label = tk.Label(beacon_frame, text=f"beacon {number}")
+        ri_label = tk.Label(beacon_frame, text=error_text)
+        x_entry = tk.Entry(beacon_frame, name='x_entry')
+        y_entry = tk.Entry(beacon_frame, name='y_entry')
+        ri_entry = tk.Entry(beacon_frame, name='ri_entry')
 
         beacon_label.grid(row=0, column=0, columnspan=2, sticky='nsew')
         ri_label.grid(row=0, column=2, sticky='nsew')
         x_entry.grid(row=1, column=0, sticky='nsew')
         y_entry.grid(row=1, column=1, sticky='nsew')
         ri_entry.grid(row=1, column=2, sticky='nsew')
-        return frame
+        return beacon_frame
 
     def create_receiver_entry(self) -> tk.Frame:
         """
         Create frame with entries for receiver data
         :return:
         """
-        frame = tk.Frame(self)
+        receiver_frame = tk.Frame(self, name='receiver_frame')
         self.columnconfigure((0, 1, 2), weight=1)
         self.rowconfigure((0, 1), weight=1)
 
-        receiver_label = tk.Label(frame, text='receiver coordinates')
-        tau_label = tk.Label(frame, text='tau')
-        receiver_x = tk.Entry(frame, name='receiver_x')
-        receiver_y = tk.Entry(frame, name='receiver_y')
-        tau_entry = tk.Entry(frame, name='tau')
+        receiver_label = tk.Label(receiver_frame, text='receiver coordinates')
+        tau_label = tk.Label(receiver_frame, text='tau')
+        receiver_x = tk.Entry(receiver_frame, name='receiver_x')
+        receiver_y = tk.Entry(receiver_frame, name='receiver_y')
+        tau_entry = tk.Entry(receiver_frame, name='tau')
 
         receiver_label.grid(row=0, column=0, columnspan=2, sticky='nsew')
         tau_label.grid(row=0, column=2, sticky='nsew')
         receiver_x.grid(row=1, column=0, sticky='nsew')
         receiver_y.grid(row=1, column=1, sticky='nsew')
         tau_entry.grid(row=1, column=2, sticky='nsew')
-        return frame
+        return receiver_frame
+
+    def create_epoch_entry(self):
+        epoch_frame = tk.Frame(self, name='epoch_frame')
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure((0, 1), weight=1)
+
+        epochs_label = tk.Label(epoch_frame, text='epochs')
+        self.epochs_entry = tk.Entry(epoch_frame, name='epochs_entry')
+
+        epochs_label.grid(row=0, column=0, sticky='nsew')
+        self.epochs_entry.grid(row=1, column=0, sticky='nsew')
+        return epoch_frame
 
     def get_data(self):
         """
@@ -188,6 +225,7 @@ class ParametersFrame(tk.Frame):
                 x_beacon = self.children[c].children['x_entry'].get()
                 y_beacon = self.children[c].children['y_entry'].get()
                 ri = self.children[c].children['ri_entry'].get()
+
                 beacons_coordinates.append((float(x_beacon), float(y_beacon)))
                 ri_data.append(float(ri))
             elif 'receiver_x' in self.children[c].children:
@@ -203,29 +241,41 @@ class ParametersFrame(tk.Frame):
         :return:
         """
         print(self.children.keys())
-        print(self.children['!frame'].children)
-        for i in range(len(data[0])):
-            frame = list(self.children.keys())[i]
+        print(self.children['beacon_frame1'].children)
+        beacon_frames = [key for key in self.children.keys() if key.startswith('beacon_frame')]
+        # insert receiver data
+        self.children['receiver_frame'].children['receiver_x'].delete(0, last=tk.END)
+        self.children['receiver_frame'].children['receiver_x'].insert(0, data[1][0])
+        self.children['receiver_frame'].children['receiver_y'].delete(0, last=tk.END)
+        self.children['receiver_frame'].children['receiver_y'].insert(0, data[1][1])
+        self.children['receiver_frame'].children['tau'].delete(0, last=tk.END)
+        self.children['receiver_frame'].children['tau'].insert(0, data[2][0])
+
+        for i in range(len(data[0])):  # insert beacon data
+            frame = beacon_frames[i]
             self.children[frame].children['x_entry'].delete(0, last=tk.END)
             self.children[frame].children['x_entry'].insert(0, data[0][i][0])
             self.children[frame].children['y_entry'].delete(0, last=tk.END)
             self.children[frame].children['y_entry'].insert(0, data[0][i][1])
             self.children[frame].children['ri_entry'].delete(0, last=tk.END)
             self.children[frame].children['ri_entry'].insert(0, data[3][i])
-        receiver = list(self.children.keys())[-2]
-        self.children[receiver].children['receiver_x'].delete(0, last=tk.END)
-        self.children[receiver].children['receiver_x'].insert(0, data[1][0])
-        self.children[receiver].children['receiver_y'].delete(0, last=tk.END)
-        self.children[receiver].children['receiver_y'].insert(0, data[1][1])
-        self.children[receiver].children['tau'].delete(0, last=tk.END)
-        self.children[receiver].children['tau'].insert(0, data[2][0])
 
     def get_epoch(self) -> int:
         """
         Return the entered number of epochs
         :return: int: epochs
         """
-        return int(self.epoch_entry.get())
+        return int(self.epochs_entry.get())
+
+    def show_warnings(self, entry_type):
+        if entry_type == 'float':
+            tk.messagebox.showwarning(title="Warning",
+                                      message="Invalid input format\n"
+                                              "Coordinates and errors must be a float or an integer")
+        elif entry_type == 'int':
+            tk.messagebox.showwarning(title="Warning",
+                                      message="Invalid input format\nNumber of epochs must be an integer")
+
 
 if __name__ == '__main__':
     app = App()

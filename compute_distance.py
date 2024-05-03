@@ -83,15 +83,15 @@ class Beacons():
             y -= lr * dy
             tau -= lr * dtau
             ri -= lr * dri
-            if i % (epochs/10) == 1:
+            if i % (epochs/20) == 1:
                 print('epoch: {}, error: {}'.format(i, E / len(pi)))
                 self.logs += f'epoch: {i}, error: {E/len(pi)}\n'
 
         self.predicted_distances = self.compute_distance(x, y, tau, ri)
-        print(self.predicted_distances)
         self.predicted_x = x
         self.predicted_y = y
-        self.logs += f'predicted coordinates = ({self.predicted_x}, {self.predicted_y})\ntau = {tau}\n'
+        self.logs += f'predicted receiver coordinates = ({self.predicted_x}, {self.predicted_y})\n' \
+                     f'predicted tau = {tau}\n'
         return x, y, tau
 
     def get_train_logs(self):
@@ -99,27 +99,30 @@ class Beacons():
 
     def draw(self):
         """
-        Draw beacons and receiver
+        Draw beacons, receiver and distances
         :return:
         """
-        app = tk.Tk()
+        graph = tk.Tk()
 
         fig, ax = plt.subplots()
         ax.scatter(self.coordinates[:, 0], self.coordinates[:, 1], c="red", label='beacons')
-        ax.scatter(np.array([self.receiver_x]), np.array([self.receiver_y]), c="blue", marker='^', label='receiver')
-        ax.scatter(np.array([self.predicted_x]), np.array([self.predicted_y]), c="yellow", marker='D', label='receiver_predicted')
+        ax.scatter(np.array([self.receiver_x]), np.array([self.receiver_y]), c="blue",
+                   marker='^', label='receiver')
+        ax.scatter(np.array([self.predicted_x]), np.array([self.predicted_y]), c="yellow",
+                   marker='D', label='receiver_predicted')
 
-        for i in range(len(self.coordinates)):  # отрисовка расстояния
-            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordinates[i, 1]), self.predicted_distances[i], color='g', ls='--', fill=False))
+        for i in range(len(self.coordinates)):  # drawing distances
+            ax.add_patch(plt.Circle((self.coordinates[i, 0], self.coordinates[i, 1]), self.predicted_distances[i],
+                                    color='g', ls='--', fill=False))
 
-        for i, txt in enumerate(range(1, len(self.coordinates))):  # добавление номера маякам
+        for i, txt in enumerate(range(1, len(self.coordinates)+1)):  # Adding a number to beacons
             ax.annotate(txt, (self.coordinates[i, 0], self.coordinates[i, 1]))
         ax.legend(loc=4)
 
-        canvas = FigureCanvasTkAgg(fig, master=app)
+        canvas = FigureCanvasTkAgg(fig, master=graph)
         canvas.draw()
 
-        toolbar = NavigationToolbar2Tk(canvas, app)
+        toolbar = NavigationToolbar2Tk(canvas, graph)
         toolbar.update()
         canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
