@@ -35,7 +35,6 @@ class Beacons():
         :param x: receiver x
         :param y: receiver y
         :param tau:
-        :param ri:
         :return:
         """
         pi = []
@@ -64,9 +63,10 @@ class Beacons():
         dEdri = dEdp.sum()
         return [dEdx, dEdy, dEdtau, dEdri]
 
-    def train(self, epochs, lr=0.0005):
+    def train(self, epochs: int, lr=0.0005):
         """
         Predict receiver coordinates ant tau
+
         :param epochs:
         :param lr:
         :return: x, y, tau
@@ -100,6 +100,7 @@ class Beacons():
     def draw(self):
         """
         Draw beacons, receiver and distances
+
         :return:
         """
         graph = tk.Tk()
