@@ -58,9 +58,12 @@ class App(ttk.Window):
         """
         filepath = tk.filedialog.asksaveasfilename(initialfile='parameters.csv',
                                                    defaultextension=".csv",
-                                                   filetypes=(('File "SCV"', "*.csv"), ("All Files", "*.*")))
-        data = self.beacon_frame.get_data()
-        print(data)
+                                                   filetypes=(('File "CSV"', "*.csv"), ("All Files", "*.*")))
+        try:
+            data = self.beacon_frame.get_data()
+        except ValueError:
+            return
+        #print(data)
         if filepath != "":
             with open(filepath, "w", newline='') as f:
                 writer = csv.writer(f)
@@ -70,6 +73,7 @@ class App(ttk.Window):
                 writer.writerow([data[2]]) # tau
                 writer.writerow(data[3]) # ri
 
+
     def open_params(self):
         """
         Open parameters from .csv file
@@ -77,7 +81,7 @@ class App(ttk.Window):
         :return:
         """
         filepath = tk.filedialog.askopenfilename(defaultextension=".csv",
-                                                 filetypes=(('File "SCV"', "*.csv"), ("All Files", "*.*")))
+                                                 filetypes=(('File "CSV"', "*.csv"), ("All Files", "*.*")))
         data = []
         with open(filepath) as f:
             reader = csv.reader(f)
