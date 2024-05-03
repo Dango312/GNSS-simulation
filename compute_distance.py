@@ -29,18 +29,17 @@ class Beacons():
             if abs(y) > max_y: max_y = abs(y)
         return max_x, max_y
 
-    def compute_distance(self, x, y, tau, ri) -> np.array:
+    def compute_distance(self, x, y, tau) -> np.array:
         """
         Compute distances between each beacon and receiver
         :param x: receiver x
         :param y: receiver y
         :param tau:
-        :param ri:
         :return:
         """
         pi = []
         for i in range(len(self.coordinates)):
-            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau + ri)
+            pi.append(np.sqrt((self.coordinates[i][0] - x) ** 2 + (self.coordinates[i][1] - y) ** 2) + tau)
         return np.array(pi)
 
     def compute_error(self, pi):
@@ -64,9 +63,10 @@ class Beacons():
         dEdri = dEdp.sum()
         return [dEdx, dEdy, dEdtau, dEdri]
 
-    def train(self, epochs, lr=0.0005):
+    def train(self, epochs: int, lr=0.0005):
         """
         Predict receiver coordinates ant tau
+
         :param epochs:
         :param lr:
         :return: x, y, tau
@@ -76,7 +76,7 @@ class Beacons():
         tau = random.random() * 2
         ri = random.random() * 1
         for i in range(epochs):
-            pi = self.compute_distance(x, y, tau, ri)
+            pi = self.compute_distance(x, y, tau)
             E = self.compute_error(pi)
             dx, dy, dtau, dri = self.compute_gradients(pi, x, y)
             x -= lr * dx
@@ -87,7 +87,7 @@ class Beacons():
                 print('epoch: {}, error: {}'.format(i, E / len(pi)))
                 self.logs += f'epoch: {i}, error: {E/len(pi)}\n'
 
-        self.predicted_distances = self.compute_distance(x, y, tau, ri)
+        self.predicted_distances = self.compute_distance(x, y, tau)
         self.predicted_x = x
         self.predicted_y = y
         self.logs += f'predicted receiver coordinates = ({self.predicted_x}, {self.predicted_y})\n' \
@@ -100,6 +100,7 @@ class Beacons():
     def draw(self):
         """
         Draw beacons, receiver and distances
+
         :return:
         """
         graph = tk.Tk()
